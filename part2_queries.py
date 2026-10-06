@@ -17,12 +17,6 @@ from DbConnector import DbConnector
 
 TASKS = ["1", "2", "3", "4a", "4b", "5", "6", "7", "8", "9", "10"]
 
-# NB: the assignment sheet gives the position as (longitude, latitude),
-# while haversine() expects (latitude, longitude).
-PORTO_CITY_HALL_LONGITUDE = -8.62911
-PORTO_CITY_HALL_LATITUDE = 41.15794
-
-
 class QueryProgram:
 
     def __init__(self):
@@ -40,97 +34,202 @@ class QueryProgram:
     def task_1(self):
         """
         How many taxis, trips, and total GPS points are there?
-
-        The counts are of the cleaned data: rows with a duplicated TRIP_ID were removed
-        during the import, so the trip count is lower than the number of CSV rows.
         """
-        raise NotImplementedError
+        
+        query = """
+        SELECT 
+            (SELECT COUNT(*) FROM taxi) AS taxi_count,
+            (SELECT COUNT(*) FROM trip) AS trip_count,
+            (SELECT COUNT(*) FROM gps_point) AS gps_point_count;
+        """
+        self.print_query(query)
 
     def task_2(self):
         """
         What is the average number of trips per taxi?
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT 
+            AVG(trip_count) AS avg_trips_per_taxi 
+        FROM (
+            SELECT COUNT(*) AS trip_count FROM trip GROUP BY taxi_id
+        ) AS trip_counts;
+        """
+        self.print_query(query)
 
     def task_3(self):
         """
         List the top 20 taxis with the most trips.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT 
+            taxi_id, 
+            COUNT(*) AS trip_count 
+        FROM trip 
+        GROUP BY taxi_id 
+        ORDER BY trip_count DESC 
+        LIMIT 20;
+        """
+        self.print_query(query)
 
     def task_4a(self):
         """
         What is the most used call type per taxi?
-
-        To decide: what to show when a taxi has two call types with the same number of trips.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT taxi_id,
+            call_type AS most_used_call_type
+        FROM (
+        SELECT taxi_id,
+                call_type,
+                COUNT(*) AS trip_count,
+                ROW_NUMBER() OVER (
+                    PARTITION BY taxi_id
+                    ORDER BY COUNT(*) DESC, call_type
+                ) AS rnk
+        FROM trip
+        GROUP BY taxi_id, call_type
+        ) ranked
+        WHERE rnk = 1
+        ORDER BY taxi_id;
+        """
+        self.print_query(query)
 
     def task_4b(self):
         """
         For each call type, compute the average trip duration and distance, and also report
         the share of trips starting in four time bands: 00-06, 06-12, 12-18, and 18-24.
-
-        Duration is end_time - start_time. Distance is not stored, so it has to be computed
-        from consecutive rows in gps_point (shared with task 5, see README "Open decisions").
-        To decide: whether trips with fewer than 2 points (no duration, no distance) count
-        in the averages, and whether the time bands use UTC (as stored) or Porto local time.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT call_type,
+            AVG(TIMESTAMPDIFF(SECOND, start_time, end_time)) AS avg_trip_duration_seconds,
+            AVG(distance_km) AS avg_trip_distance_km,
+            AVG(CASE WHEN HOUR(start_time) < 6 THEN 1 ELSE 0 END) AS share_00_06,
+            AVG(CASE WHEN HOUR(start_time) >= 6 AND HOUR(start_time) < 12 THEN 1 ELSE 0 END) AS share_06_12,
+            AVG(CASE WHEN HOUR(start_time) >= 12 AND HOUR(start_time) < 18 THEN 1 ELSE 0 END) AS share_12_18,
+            AVG(CASE WHEN HOUR(start_time) >= 18 THEN 1 ELSE 0 END) AS share_18_24
+        FROM trip
+        WHERE distance_km > 0
+        GROUP BY call_type;
+        """
+        self.print_query(query)
 
     def task_5(self):
         """
         Find the taxis with the most total hours driven as well as total distance driven.
         List them in order of total hours.
-
-        Uses the same per-trip distance as task 4b. GPS outliers inflate the distance.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT taxi_id,
+            SUM(TIMESTAMPDIFF(SECOND, start_time, end_time)) / 3600.0 AS total_hours_driven,
+            SUM(distance_km) AS total_distance_km
+        FROM trip
+        GROUP BY taxi_id
+        ORDER BY total_hours_driven DESC;
+        """
+        self.print_query(query)
 
     def task_6(self):
         """
         Find the trips that passed within 100 m of Porto City Hall.
         (longitude, latitude) = (-8.62911, 41.15794)
-
-        A trip passes within 100 m if at least one of its rows in gps_point does.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT DISTINCT trip_id
+        FROM gps_point
+        WHERE ST_Distance_Sphere(
+            POINT(longitude, latitude),
+            POINT(-8.62911, 41.15794)
+        ) <= 100;
+        """
+        self.print_query(query)
 
     def task_7(self):
         """
         Identify the number of invalid trips. An invalid trip is defined as a trip with
         fewer than 3 GPS points.
-
-        These trips were deliberately kept by the import. trip.point_count holds the count.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT COUNT(*) AS invalid_trip_count
+        FROM trip
+        WHERE point_count < 3;
+        """
+        self.print_query(query)
 
     def task_8(self):
         """
         Find the trips that started on one calendar day and ended on the next (midnight crossers).
-
-        To decide: whether midnight is in UTC (as stored) or in Porto local time.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT trip_id
+        FROM trip
+        WHERE TIMESTAMPDIFF(DAY, DATE(start_time), DATE(end_time)) = 1;
+        """
+        self.print_query(query)
 
     def task_9(self):
         """
         Find the trips whose start and end points are within 50 m of each other (circular trips).
-
-        The start point has seq = 0 and the end point has seq = point_count - 1.
-        To decide: whether trips with a single point (start = end) or invalid trips count.
         """
-        raise NotImplementedError
+
+        query = """
+        SELECT trip.trip_id
+        FROM trip
+        JOIN gps_point AS start_pt
+            ON start_pt.trip_id = trip.trip_id AND start_pt.seq = 0
+        JOIN gps_point AS end_pt
+            ON end_pt.trip_id = trip.trip_id AND end_pt.seq = trip.point_count - 1
+        WHERE trip.point_count >= 2
+        AND ST_Distance_Sphere(
+                POINT(start_pt.longitude, start_pt.latitude),
+                POINT(end_pt.longitude, end_pt.latitude)
+            ) <= 50;
+        """
+        self.print_query(query)
 
     def task_10(self):
         """
         For each taxi, compute the average idle time between consecutive trips. List the
         top 20 taxis with the highest average idle time.
-
-        Idle time is the next trip's start_time minus this trip's end_time for the same taxi.
-        To decide: how to treat overlapping trips (negative idle time).
         """
-        raise NotImplementedError
+
+        query = """
+        WITH ordered AS (
+            SELECT
+                taxi_id,
+                start_time,
+                end_time,
+                LEAD(start_time) OVER (
+                    PARTITION BY taxi_id
+                    ORDER BY start_time, trip_id
+                ) AS next_start
+            FROM trip
+        ),
+        idle AS (
+            SELECT
+                taxi_id,
+                TIMESTAMPDIFF(SECOND, end_time, next_start) / 3600.0 AS idle_hours
+            FROM ordered
+            WHERE next_start IS NOT NULL
+            AND TIMESTAMPDIFF(SECOND, end_time, next_start) >= 0
+        )
+        SELECT
+            taxi_id,
+            AVG(idle_hours) AS avg_idle_hours
+        FROM idle
+        GROUP BY taxi_id
+        ORDER BY avg_idle_hours DESC
+        LIMIT 20;
+        """
+        self.print_query(query)
 
 
 def main():
