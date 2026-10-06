@@ -16,7 +16,6 @@ from tabulate import tabulate
 from DbConnector import DbConnector
 
 TASKS = ["1", "2", "3", "4a", "4b", "5", "6", "7", "8", "9", "10"]
-PREVIEW_ROW_COUNT = 10
 
 class QueryProgram:
 
@@ -25,14 +24,14 @@ class QueryProgram:
         self.db_connection = self.connection.db_connection
         self.cursor = self.connection.cursor
 
-    def print_query(self, query, params=None):
+    def print_query(self, query, params=None, n_rows=10):
         """Run a SELECT, print the first rows as a table and return every row."""
         self.cursor.execute(query, params)
         rows = self.cursor.fetchall()
-        preview_rows = rows[:PREVIEW_ROW_COUNT]
+        preview_rows = rows[:n_rows]
         print(tabulate(preview_rows, headers=self.cursor.column_names))
-        if len(rows) > PREVIEW_ROW_COUNT:
-            print("(%d rows, showing the first %d)" % (len(rows), PREVIEW_ROW_COUNT))
+        if len(rows) > n_rows:
+            print("(%d rows, showing the first %d)" % (len(rows), n_rows))
         return rows
 
     def task_1(self):
@@ -233,7 +232,7 @@ class QueryProgram:
         ORDER BY avg_idle_hours DESC
         LIMIT 20;
         """
-        self.print_query(query)
+        self.print_query(query, n_rows=20)
 
 
 def main():
