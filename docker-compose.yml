@@ -1,0 +1,33 @@
+# Local MySQL for TDT4225 Assignment 2 (our group has no course VM).
+# Settings come from .env - copy .env.example to .env first.
+#
+#   docker compose up -d --wait    start MySQL and wait until it is ready
+#   docker compose stop            stop it, keep the data
+#   docker compose down -v         remove the container AND all imported data
+
+name: tdt4225-assignment2
+
+services:
+  mysql:
+    image: mysql:8.0.39                    # the version named in the assignment sheet
+    container_name: tdt4225-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}           # created on first start
+      MYSQL_USER: ${DB_USER}               # gets all privileges on MYSQL_DATABASE
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    command:
+      - --default-time-zone=+00:00         # trip times are stored in UTC
+      - --innodb-buffer-pool-size=1G       # the 128M default is slow for 83M GPS points
+    ports:
+      - "127.0.0.1:${DB_PORT}:3306"        # only reachable from this machine
+    volumes:
+      - mysql_data:/var/lib/mysql          # the data survives container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mysql_data:

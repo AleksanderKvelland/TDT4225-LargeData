@@ -1,1 +1,15 @@
 CLAUDE.md
+
+# Dataset (1.9 GB, download from Blackboard) and leftovers from the macOS zip
+porto/
+__MACOSX/
+.DS_Store
+
+# Local credentials (copy .env.example to .env)
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
