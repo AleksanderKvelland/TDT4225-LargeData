@@ -88,9 +88,8 @@ The import flags problems and keeps the rows, with one exception: duplicated tri
 These affect more than one task, so we should agree on them before writing the queries.
 
 1. **Time zone.** Times are stored in UTC, and Porto is on UTC+1 in summer. The time bands in task 4b and the midnight crossers in task 8 give different answers in local time.
-2. **Trip distance.** Tasks 4b and 5 both need the distance of each trip, which is not stored. We can compute it in the queries, or add a column to `trip` that the import fills using `haversine`. A new column means everyone imports again.
-3. **GPS outliers.** Some points are hundreds of kilometres from Porto. They inflate distances (tasks 4b and 5) unless we filter them.
-4. **Invalid trips in averages.** Trips with fewer than 3 points have little or no duration and distance. Decide whether they count in tasks 4b, 5, 9 and 10.
+2. **GPS outliers.** Some points are hundreds of kilometres from Porto. They inflate distances (tasks 4b and 5) unless we filter them.
+3. **Invalid trips in averages.** Trips with fewer than 3 points have little or no duration and distance. Decide whether they count in tasks 4b, 5, 9 and 10.
 
 ## Working together
 

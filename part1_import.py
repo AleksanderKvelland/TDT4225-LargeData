@@ -16,6 +16,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from itertools import islice
 
+from haversine import haversine, Unit
 from tabulate import tabulate
 
 from DbConnector import DbConnector
@@ -44,6 +45,7 @@ TABLES = {
             day_type     ENUM('A', 'B', 'C') NOT NULL,
             missing_data BOOLEAN             NOT NULL,
             point_count  SMALLINT UNSIGNED   NOT NULL,  -- derived: number of rows in gps_point
+            distance_km  DOUBLE              NOT NULL,  -- derived: distance between consecutive GPS points
             PRIMARY KEY (trip_id),
             INDEX idx_trip_taxi_start (taxi_id, start_time),
             FOREIGN KEY (taxi_id) REFERENCES taxi (taxi_id) ON DELETE CASCADE
@@ -61,9 +63,9 @@ TABLES = {
 
 INSERT_TAXI = "INSERT INTO taxi (taxi_id) VALUES (%s)"
 INSERT_TRIP = """INSERT INTO trip (trip_id, taxi_id, call_type, origin_call, origin_stand,
-                                   start_time, end_time, day_type, missing_data, point_count)
+                                   start_time, end_time, day_type, missing_data, point_count, distance_km)
                  VALUES (%(trip_id)s, %(taxi_id)s, %(call_type)s, %(origin_call)s, %(origin_stand)s,
-                         %(start_time)s, %(end_time)s, %(day_type)s, %(missing_data)s, %(point_count)s)"""
+                         %(start_time)s, %(end_time)s, %(day_type)s, %(missing_data)s, %(point_count)s, %(distance_km)s)"""
 INSERT_POINT = "INSERT INTO gps_point (trip_id, seq, longitude, latitude) VALUES (%s, %s, %s, %s)"
 
 
@@ -77,6 +79,16 @@ def int_or_none(value):
     """ORIGIN_CALL and ORIGIN_STAND are empty strings in the CSV when they are not set."""
     return int(value) if value else None
 
+def calculate_polyline_distance_km(polyline):
+    """Calculate the sum of haversine distances between consecutive GPS points in the polyline."""
+    if len(polyline) < 2:
+        return 0.0
+
+    total = 0.0
+    for (lon1, lat1), (lon2, lat2) in zip(polyline, polyline[1:]):
+        total += haversine((lat1, lon1), (lat2, lon2), unit=Unit.KILOMETERS)
+
+    return total
 
 def clean_trip(row):
     """Convert one raw CSV row to a trip (dict) and its GPS points (list of tuples)."""
@@ -102,6 +114,7 @@ def clean_trip(row):
         "missing_data": row["MISSING_DATA"] == "True",
         # Cleaning rule 4: trips with few or no GPS points are kept (Part 2 task 7 counts them)
         "point_count": len(polyline),
+        "distance_km": calculate_polyline_distance_km(polyline),
     }
     points = [(trip_id, seq, longitude, latitude) for seq, (longitude, latitude) in enumerate(polyline)]
     return trip, points
