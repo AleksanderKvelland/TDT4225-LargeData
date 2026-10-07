@@ -42,7 +42,6 @@ TABLES = {
             origin_stand TINYINT UNSIGNED    NULL,      -- taxi stand id, only for call_type B
             start_time   DATETIME            NOT NULL,  -- TIMESTAMP converted to UTC
             end_time     DATETIME            NOT NULL,  -- derived: start_time + (point_count - 1) * 15 s
-            day_type     ENUM('A', 'B', 'C') NOT NULL,
             missing_data BOOLEAN             NOT NULL,
             point_count  SMALLINT UNSIGNED   NOT NULL,  -- derived: number of rows in gps_point
             distance_km  DOUBLE              NOT NULL,  -- derived: distance between consecutive GPS points
@@ -63,9 +62,9 @@ TABLES = {
 
 INSERT_TAXI = "INSERT INTO taxi (taxi_id) VALUES (%s)"
 INSERT_TRIP = """INSERT INTO trip (trip_id, taxi_id, call_type, origin_call, origin_stand,
-                                   start_time, end_time, day_type, missing_data, point_count, distance_km)
+                                   start_time, end_time, missing_data, point_count, distance_km)
                  VALUES (%(trip_id)s, %(taxi_id)s, %(call_type)s, %(origin_call)s, %(origin_stand)s,
-                         %(start_time)s, %(end_time)s, %(day_type)s, %(missing_data)s, %(point_count)s, %(distance_km)s)"""
+                         %(start_time)s, %(end_time)s, %(missing_data)s, %(point_count)s, %(distance_km)s)"""
 INSERT_POINT = "INSERT INTO gps_point (trip_id, seq, longitude, latitude) VALUES (%s, %s, %s, %s)"
 
 
@@ -109,7 +108,6 @@ def clean_trip(row):
         "origin_stand": int_or_none(row["ORIGIN_STAND"]),
         "start_time": start_time,
         "end_time": start_time + duration,
-        "day_type": row["DAY_TYPE"],
         # Cleaning rule 3: trips with missing GPS points are kept and flagged, not removed
         "missing_data": row["MISSING_DATA"] == "True",
         # Cleaning rule 4: trips with few or no GPS points are kept (Part 2 task 7 counts them)

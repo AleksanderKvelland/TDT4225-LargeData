@@ -49,16 +49,16 @@ The `CREATE TABLE` statements are in `TABLES` at the top of `part1_import.py`.
 ```
 taxi        taxi_id (PK)
  └─ trip        trip_id (PK), taxi_id (FK), call_type, origin_call, origin_stand,
-     │          start_time, end_time, day_type, missing_data, point_count
+     │          start_time, end_time, missing_data, point_count, distance_km
      └─ gps_point   trip_id (FK) + seq (PK), longitude, latitude
 ```
 
 - **One row per GPS point.** The nested `POLYLINE` becomes 83.4 million rows in `gps_point`, so questions about individual points can be answered in SQL.
 - **`seq` instead of a timestamp per point.** `seq` is the position in the polyline, starting at 0. Points are 15 seconds apart, so a point's time is `start_time + seq * 15 s`.
-- **Two derived columns on `trip`.** `point_count` and `end_time` (`start_time + (point_count - 1) * 15 s`) are computed during the import. They repeat what `gps_point` already says, so that durations and point counts do not require aggregating 83 million rows.
+- **Three derived columns on `trip`.** `point_count`, `end_time` (`start_time + (point_count - 1) * 15 s`) and `distance_km` (the sum of the haversine distances between consecutive points, 0 for trips with fewer than two points) are computed during the import. They repeat what `gps_point` already says, so that durations, distances and point counts do not require aggregating 83 million rows.
 - **Times are UTC.** `TIMESTAMP` is converted to a UTC `DATETIME`, and the server runs in UTC.
 - **Foreign keys cascade.** Deleting a taxi deletes its trips, and deleting a trip deletes its points.
-- **No tables for clients and taxi stands.** We only know their ids, which are stored on the trip.
+- **A table for taxis, but none for clients or taxi stands.** All three are known only by their id, so `taxi` has a single column and stores nothing that `trip.taxi_id` does not. We keep it because the taxi is the owner of a trip: every trip has exactly one, and tasks 1, 2, 3, 4a, 5 and 10 in Part 2 are asked per taxi. `origin_call` and `origin_stand` are optional details of a trip, set only for call type A and B respectively, and no task asks about them, so they stay as nullable columns on `trip`.
 
 ## Cleaning rules
 
@@ -72,7 +72,7 @@ The import flags problems and keeps the rows, with one exception: duplicated tri
 | `MISSING_DATA` is true | 10 | Kept and flagged in `trip.missing_data`. |
 | Empty `POLYLINE` | 5,901 | Kept with `point_count` 0 and no rows in `gps_point`. |
 | Fewer than 3 GPS points | 43,904, including the empty ones | Kept, because task 7 asks us to count them. |
-| `DAY_TYPE` is `A` on every row | 1,710,670 | Kept as it is. |
+| `DAY_TYPE` is `A` on every row | 1,710,670 | Column dropped. It is `A` even on holidays, so it carries no information and would give wrong answers if queried. |
 | GPS points far from Porto | Not counted yet | Kept as they are. See open decisions. |
 
 ## Suggested work packages
