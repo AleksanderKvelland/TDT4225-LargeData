@@ -75,7 +75,7 @@ class QueryProgram:
         ORDER BY trip_count DESC 
         LIMIT 20;
         """
-        self.print_query(query)
+        self.print_query(query, n_rows=20)
 
     def task_4a(self):
         """
