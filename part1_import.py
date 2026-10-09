@@ -6,7 +6,7 @@ Part 1.2 - create the tables and import the cleaned Porto taxi dataset into MySQ
     python part1_import.py --reset          drop the existing tables first
 
 The schema is defined in TABLES. The cleaning rules are marked with "Cleaning rule"
-comments below, and README.md explains the reasoning behind them.
+comments below, part1_eda.ipynb and our report explains the reasoning behind them.
 """
 import argparse
 import csv
@@ -41,7 +41,7 @@ TABLES = {
             origin_call  INT UNSIGNED        NULL,      -- client id, only for call_type A
             origin_stand TINYINT UNSIGNED    NULL,      -- taxi stand id, only for call_type B
             start_time   DATETIME            NOT NULL,  -- TIMESTAMP converted to UTC
-            end_time     DATETIME            NOT NULL,  -- derived: start_time + (point_count - 1) * 15 s
+            end_time     DATETIME            NOT NULL,  -- derived: start_time + max(point_count - 1, 0) * 15 s
             missing_data BOOLEAN             NOT NULL,
             point_count  SMALLINT UNSIGNED   NOT NULL,  -- derived: number of rows in gps_point
             distance_km  DOUBLE              NOT NULL,  -- derived: distance between consecutive GPS points
