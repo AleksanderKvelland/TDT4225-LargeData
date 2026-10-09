@@ -59,7 +59,7 @@ taxi        taxi_id (PK)
 docker compose up -d --wait                                  # start MySQL
 docker compose stop                                          # stop it, keep the data
 docker compose down -v                                       # delete the container and all imported data
-docker exec -it tdt4225-mysql mysql -u porto_user -p porto   # MySQL shell
+docker exec -it tdt4225-mysql mysql -u testuser -p porto   # MySQL shell
 ```
 
 MySQL reads the user, password and database name from `.env` only the first time the container starts. To change them later, run `docker compose down -v` and start again.
