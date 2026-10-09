@@ -4,7 +4,11 @@ We run MySQL 8.0.39 locally in Docker because the group has no course VM, so eac
 
 **Deadline: 9 October 2026 at 14:00.**
 
+**GitHub repo:** [https://github.com/AleksanderKvelland/TDT4225-LargeData](https://github.com/AleksanderKvelland/TDT4225-LargeData)
+
 **Contributors:** Aleksander Kvelland, André Klarpås, Brage Andreas Hoven
+
+**Group:** 110
 
 ## Setup
 
